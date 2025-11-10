@@ -1,15 +1,6 @@
 package sqlancer.mysql;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
-
+import com.google.common.base.Strings;
 import sqlancer.Randomly;
 import sqlancer.SQLConnection;
 import sqlancer.common.schema.AbstractRelationalTable;
@@ -21,6 +12,16 @@ import sqlancer.common.schema.TableIndex;
 import sqlancer.mysql.MySQLSchema.MySQLTable;
 import sqlancer.mysql.MySQLSchema.MySQLTable.MySQLEngine;
 import sqlancer.mysql.ast.MySQLConstant;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
 
@@ -234,7 +235,7 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
                         while (rs.next()) {
                             String tableName = rs.getString("TABLE_NAME");
                             String tableEngineStr = rs.getString("ENGINE");
-                            MySQLEngine engine = MySQLEngine.get(tableEngineStr);
+                            MySQLEngine engine = MySQLEngine.get(Strings.isNullOrEmpty(tableEngineStr) ? "InnoDB" : tableEngineStr);
                             List<MySQLColumn> databaseColumns = getTableColumns(con, tableName, databaseName);
                             List<MySQLIndex> indexes = getIndexes(con, tableName, databaseName);
                             MySQLTable t = new MySQLTable(tableName, databaseColumns, indexes, engine);
