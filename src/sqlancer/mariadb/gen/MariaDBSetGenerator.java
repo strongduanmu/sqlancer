@@ -1,17 +1,17 @@
 package sqlancer.mariadb.gen;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import sqlancer.MainOptions;
 import sqlancer.Randomly;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.mariadb.MariaDBBugs;
 import sqlancer.mariadb.MariaDBProvider.MariaDBGlobalState;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class MariaDBSetGenerator {
 
@@ -37,7 +37,7 @@ public class MariaDBSetGenerator {
     private enum Action {
 
         AUTOCOMMIT("autocommit", (r) -> 1, Scope.GLOBAL, Scope.SESSION), //
-        BIG_TABLES("big_tables", (r) -> Randomly.fromOptions("OFF", "ON"), Scope.GLOBAL, Scope.SESSION), //
+        // BIG_TABLES("big_tables", (r) -> Randomly.fromOptions("OFF", "ON"), Scope.GLOBAL, Scope.SESSION), //
         COMPLETION_TYPE("completion_type",
                 (r) -> Randomly.fromOptions("'NO_CHAIN'", "'CHAIN'", "'RELEASE'", "0", "1", "2"), Scope.GLOBAL), //
         // BULK_INSERT_CACHE_SIZE("bulk_insert_buffer_size", (r) -> r.getLong(0, Long.MAX_VALUE), Scope.GLOBAL,
