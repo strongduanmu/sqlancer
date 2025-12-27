@@ -322,7 +322,48 @@ public class PostgresProvider extends SQLProviderAdapter<PostgresGlobalState, Po
         globalState.getState().logStatement(String.format("\\c %s;", databaseName));
 
         con = DriverManager.getConnection("jdbc:" + testURL, username, password);
+
+        // NOTE: ShardingSphere proxy uses port 3307
+        if (3307 == port) {
+            initPhysicalDatabase(globalState, databaseName);
+            registerStorageUnit(globalState, databaseName);
+        }
+
         return new SQLConnection(con);
+    }
+
+    private void initPhysicalDatabase(PostgresGlobalState globalState, String databaseName) throws SQLException {
+        String storageUnitUrl = String.format("jdbc:postgresql://%s:%d/%s",
+                globalState.getOptions().getStorageUnitHost(),
+                globalState.getOptions().getStorageUnitPort(),
+                databaseName);
+        try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
+                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitPassword())) {
+            // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
+            try (Statement s = pcon.createStatement()) {
+                s.execute("DROP DATABASE IF EXISTS " + databaseName);
+            }
+            try (Statement s = pcon.createStatement()) {
+                s.execute("CREATE DATABASE " + databaseName);
+            }
+        }
+    }
+
+    private void registerStorageUnit(PostgresGlobalState globalState, String databaseName) throws SQLException {
+        String storageUnitUrl = String.format("jdbc:postgresql://%s:%d/%s",
+                globalState.getOptions().getStorageUnitHost(),
+                globalState.getOptions().getStorageUnitPort(),
+                databaseName);
+        try (Statement s = globalState.getConnection().createStatement()) {
+            // NOTE: 注册 ShardingSphere 存储单元
+            s.execute("REGISTER STORAGE UNIT ds_0 (\n"
+                    + "    URL=\"" + storageUnitUrl + "\",\n"
+                    + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                    + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
+                    + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
+                    + ")");
+        }
     }
 
     protected void readFunctions(PostgresGlobalState globalState) throws SQLException {

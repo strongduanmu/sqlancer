@@ -150,6 +150,18 @@ public class MainOptions {
     @Parameter(names = "--canonicalize-sql-strings", description = "Should canonicalize query string (add ';' at the end", arity = 1)
     private boolean canonicalizeSqlString = true; // NOPMD
 
+    @Parameter(names = "--storage-unit-host", description = "Storage unit host for ShardingSphere")
+    private String storageUnitHost = "127.0.0.1"; // NOPMD
+
+    @Parameter(names = "--storage-unit-port", description = "Storage unit port for ShardingSphere")
+    private int storageUnitPort = 3306; // NOPMD
+
+    @Parameter(names = "--storage-unit-username", description = "Storage unit username for ShardingSphere")
+    private String storageUnitUser = "root"; // NOPMD
+
+    @Parameter(names = "--storage-unit-password", description = "Storage unit password for ShardingSphere")
+    private String storageUnitPassword = "123456"; // NOPMD
+
     public int getMaxExpressionDepth() {
         return maxExpressionDepth;
     }
@@ -341,6 +353,22 @@ public class MainOptions {
 
     public boolean canonicalizeSqlString() {
         return canonicalizeSqlString;
+    }
+
+    public String getStorageUnitHost() {
+        return storageUnitHost;
+    }
+
+    public int getStorageUnitPort() {
+        return storageUnitPort;
+    }
+
+    public String getStorageUnitUser() {
+        return storageUnitUser;
+    }
+
+    public String getStorageUnitPassword() {
+        return storageUnitPassword;
     }
 
 }

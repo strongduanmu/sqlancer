@@ -168,9 +168,6 @@ public class MariaDBProvider extends SQLProviderAdapter<MariaDBGlobalState, Mari
 
     @Override
     public SQLConnection createDatabase(MariaDBGlobalState globalState) throws SQLException {
-        globalState.getState().logStatement("DROP DATABASE IF EXISTS " + globalState.getDatabaseName());
-        globalState.getState().logStatement("CREATE DATABASE " + globalState.getDatabaseName());
-        globalState.getState().logStatement("USE " + globalState.getDatabaseName());
         String username = globalState.getOptions().getUserName();
         String password = globalState.getOptions().getPassword();
         String host = globalState.getOptions().getHost();
@@ -181,18 +178,55 @@ public class MariaDBProvider extends SQLProviderAdapter<MariaDBGlobalState, Mari
         if (port == MainOptions.NO_SET_PORT) {
             port = MariaDBOptions.DEFAULT_PORT;
         }
+        String databaseName = globalState.getDatabaseName();
+        globalState.getState().logStatement("DROP DATABASE IF EXISTS " + databaseName);
+        globalState.getState().logStatement("CREATE DATABASE " + databaseName);
+        globalState.getState().logStatement("USE " + databaseName);
         String url = String.format("jdbc:mariadb://%s:%d", host, port);
+        if (3307 == port) {
+            initPhysicalDatabase(globalState, databaseName);
+        }
         Connection con = DriverManager.getConnection(url, username, password);
         try (Statement s = con.createStatement()) {
-            s.execute("DROP DATABASE IF EXISTS " + globalState.getDatabaseName());
+            s.execute("DROP DATABASE IF EXISTS " + databaseName);
         }
         try (Statement s = con.createStatement()) {
-            s.execute("CREATE DATABASE " + globalState.getDatabaseName());
+            s.execute("CREATE DATABASE " + databaseName);
         }
         try (Statement s = con.createStatement()) {
-            s.execute("USE " + globalState.getDatabaseName());
+            s.execute("USE " + databaseName);
+            if (3307 == port) {
+                // NOTE: 注册 ShardingSphere 存储单元
+                String storageUnitUrl = String.format("jdbc:mariadb://%s:%d/%s",
+                        globalState.getOptions().getStorageUnitHost(),
+                        globalState.getOptions().getStorageUnitPort(),
+                        databaseName);
+                s.execute("REGISTER STORAGE UNIT ds_0 (\n"
+                        + "    URL=\"" + storageUnitUrl + "\",\n"
+                        + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                        + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
+                        + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
+                        + ")");
+            }
         }
         return new SQLConnection(con);
+    }
+
+    private void initPhysicalDatabase(MariaDBGlobalState globalState, String databaseName) throws SQLException {
+        String storageUnitUrl = String.format("jdbc:mariadb://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+                globalState.getOptions().getStorageUnitHost(),
+                globalState.getOptions().getStorageUnitPort());
+        try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
+                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitPassword())) {
+            // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
+            try (Statement s = pcon.createStatement()) {
+                s.execute("DROP DATABASE IF EXISTS " + databaseName);
+            }
+            try (Statement s = pcon.createStatement()) {
+                s.execute("CREATE DATABASE " + databaseName);
+            }
+        }
     }
 
     @Override

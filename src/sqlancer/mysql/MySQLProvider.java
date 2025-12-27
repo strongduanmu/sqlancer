@@ -189,7 +189,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         String url = String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
                 host, port);
         if (3307 == port) {
-            initPhysicalDatabase(host, username, databaseName);
+            initPhysicalDatabase(globalState, databaseName);
         }
         Connection con = DriverManager.getConnection(url, username, password);
         try (Statement s = con.createStatement()) {
@@ -202,21 +202,29 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             s.execute("USE " + databaseName);
             if (3307 == port) {
                 // NOTE: 注册 ShardingSphere 存储单元
+                String storageUnitUrl = String.format("jdbc:mysql://%s:%d/%s?serverTimezone=UTC&useSSL=false",
+                        globalState.getOptions().getStorageUnitHost(),
+                        globalState.getOptions().getStorageUnitPort(),
+                        databaseName);
                 s.execute("REGISTER STORAGE UNIT ds_0 (\n"
-                        + "    URL=\"jdbc:mysql://127.0.0.1:3306/" + databaseName + "?serverTimezone=UTC&useSSL=false\",\n"
-                        + "    USER=\"root\",\n"
-                        + "    PASSWORD=\"123456\",\n"
+                        + "    URL=\"" + storageUnitUrl + "\",\n"
+                        + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                        + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
                         + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
-                        + ")");   
+                        + ")");
             }
         }
         return new SQLConnection(con);
     }
     
-    private void initPhysicalDatabase(String host, String username, String databaseName) throws SQLException {
-        try (Connection pcon = DriverManager.getConnection(String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-                host, 3306), username, "123456")) {
-            // NOTE: 先重建物理库，再重建逻辑库，防止残留数据影响测试
+    private void initPhysicalDatabase(MySQLGlobalState globalState, String databaseName) throws SQLException {
+        String storageUnitUrl = String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+                globalState.getOptions().getStorageUnitHost(),
+                globalState.getOptions().getStorageUnitPort());
+        try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
+                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitPassword())) {
+            // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
             try (Statement s = pcon.createStatement()) {
                 s.execute("DROP DATABASE IF EXISTS " + databaseName);
             }
