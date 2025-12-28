@@ -48,8 +48,9 @@ public class MySQLUpdateGenerator extends AbstractUpdateGenerator<MySQLColumn> {
     protected void updateValue(MySQLColumn column) {
         if (Randomly.getBoolean()) {
             sb.append(gen.generateConstant());
-        } else if (Randomly.getBoolean()) {
-            sb.append("DEFAULT");
+        // TODO: ShardingSphere 联邦查询支持 UPDATE SET DEFAULT 后去除注释
+        // } else if (Randomly.getBoolean()) {
+        //    sb.append("DEFAULT");
         } else {
             sb.append(MySQLVisitor.asString(gen.generateExpression()));
         }

@@ -139,9 +139,11 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
         case "smallint":
         case "mediumint":
         case "int":
+        case "integer":
         case "bigint":
             return MySQLDataType.INT;
         case "varchar":
+        case "longvarchar":
         case "tinytext":
         case "mediumtext":
         case "text":
@@ -150,6 +152,7 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
         case "double":
             return MySQLDataType.DOUBLE;
         case "float":
+        case "real":
             return MySQLDataType.FLOAT;
         case "decimal":
             return MySQLDataType.DECIMAL;

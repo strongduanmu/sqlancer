@@ -19,17 +19,10 @@ import sqlancer.mysql.gen.MySQLAlterTable;
 import sqlancer.mysql.gen.MySQLDeleteGenerator;
 import sqlancer.mysql.gen.MySQLDropIndex;
 import sqlancer.mysql.gen.MySQLInsertGenerator;
-import sqlancer.mysql.gen.MySQLSetGenerator;
 import sqlancer.mysql.gen.MySQLTableGenerator;
 import sqlancer.mysql.gen.MySQLTruncateTableGenerator;
 import sqlancer.mysql.gen.MySQLUpdateGenerator;
-import sqlancer.mysql.gen.admin.MySQLFlush;
-import sqlancer.mysql.gen.admin.MySQLReset;
 import sqlancer.mysql.gen.datadef.MySQLIndexGenerator;
-import sqlancer.mysql.gen.tblmaintenance.MySQLAnalyzeTable;
-import sqlancer.mysql.gen.tblmaintenance.MySQLChecksum;
-import sqlancer.mysql.gen.tblmaintenance.MySQLOptimize;
-import sqlancer.mysql.gen.tblmaintenance.MySQLRepair;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -48,12 +41,13 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
     enum Action implements AbstractAction<MySQLGlobalState> {
         SHOW_TABLES((g) -> new SQLQueryAdapter("SHOW TABLES")), //
         INSERT(MySQLInsertGenerator::insertRow), //
-        SET_VARIABLE(MySQLSetGenerator::set), //
-        REPAIR(MySQLRepair::repair), //
-        OPTIMIZE(MySQLOptimize::optimize), //
-        CHECKSUM(MySQLChecksum::checksum), //
-        ANALYZE_TABLE(MySQLAnalyzeTable::analyze), //
-        FLUSH(MySQLFlush::create), RESET(MySQLReset::create), CREATE_INDEX(MySQLIndexGenerator::create), //
+        // SET_VARIABLE(MySQLSetGenerator::set), //
+        // REPAIR(MySQLRepair::repair), //
+        // OPTIMIZE(MySQLOptimize::optimize), //
+        // CHECKSUM(MySQLChecksum::checksum), //
+        // ANALYZE_TABLE(MySQLAnalyzeTable::analyze), //
+        // FLUSH(MySQLFlush::create), RESET(MySQLReset::create), 
+        CREATE_INDEX(MySQLIndexGenerator::create), //
         ALTER_TABLE(MySQLAlterTable::create), //
         TRUNCATE_TABLE(MySQLTruncateTableGenerator::generate), //
         SELECT_INFO((g) -> {
@@ -96,31 +90,31 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         case INSERT:
             nrPerformed = r.getInteger(0, globalState.getOptions().getMaxNumberInserts());
             break;
-        case REPAIR:
-            nrPerformed = r.getInteger(0, 1);
-            break;
-        case SET_VARIABLE:
-            nrPerformed = r.getInteger(0, 5);
-            break;
+        // case REPAIR:
+        //     nrPerformed = r.getInteger(0, 1);
+        //     break;
+        // case SET_VARIABLE:
+        //     nrPerformed = r.getInteger(0, 5);
+        //     break;
         case CREATE_INDEX:
             nrPerformed = r.getInteger(0, 5);
             break;
-        case FLUSH:
-            nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
-            break;
-        case OPTIMIZE:
-            // seems to yield low CPU utilization
-            nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
-            break;
-        case RESET:
-            // affects the global state, so do not execute
-            nrPerformed = globalState.getOptions().getNumberConcurrentThreads() == 1 ? r.getInteger(0, 1) : 0;
-            break;
-        case CHECKSUM:
+        // case FLUSH:
+        //     nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
+        //     break;
+        // case OPTIMIZE:
+        //     // seems to yield low CPU utilization
+        //     nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
+        //     break;
+        // case RESET:
+        //     // affects the global state, so do not execute
+        //     nrPerformed = globalState.getOptions().getNumberConcurrentThreads() == 1 ? r.getInteger(0, 1) : 0;
+        //     break;
+        // case CHECKSUM:
         // CHECK_TABLE - commented out, not supported by ShardingSphere SQL Federation
-        case ANALYZE_TABLE:
-            nrPerformed = r.getInteger(0, 2);
-            break;
+        // case ANALYZE_TABLE:
+        //     nrPerformed = r.getInteger(0, 2);
+        //     break;
         case ALTER_TABLE:
             nrPerformed = r.getInteger(0, 5);
             break;
@@ -146,10 +140,6 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
     public void generateDatabase(MySQLGlobalState globalState) throws Exception {
         while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(1, 2)) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getDatabaseTables().size());
-            if (globalState.getOptions().getPort() == 3307) {
-                // NOTE: 尝试先删除表，避免表已存在报错
-                globalState.executeStatement(new SQLQueryAdapter("DROP TABLE IF EXISTS " + tableName));
-            }
             SQLQueryAdapter createTable = MySQLTableGenerator.generate(globalState, tableName);
             globalState.executeStatement(createTable);
         }
@@ -222,8 +212,6 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                         + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
                         + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
                         + ")");
-                // NOTE: 刷新表元数据以确保逻辑库和物理存储单元的元数据同步
-                s.execute("REFRESH TABLE METADATA");
             }
         }
         return new SQLConnection(con);
