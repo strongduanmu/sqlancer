@@ -338,7 +338,7 @@ public class PostgresProvider extends SQLProviderAdapter<PostgresGlobalState, Po
                 globalState.getOptions().getStorageUnitPort(),
                 databaseName);
         try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
-                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitUsername(),
                 globalState.getOptions().getStorageUnitPassword())) {
             // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
             try (Statement s = pcon.createStatement()) {
@@ -359,7 +359,7 @@ public class PostgresProvider extends SQLProviderAdapter<PostgresGlobalState, Po
             // NOTE: 注册 ShardingSphere 存储单元
             s.execute("REGISTER STORAGE UNIT ds_0 (\n"
                     + "    URL=\"" + storageUnitUrl + "\",\n"
-                    + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                    + "    USER=\"" + globalState.getOptions().getStorageUnitUsername() + "\",\n"
                     + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
                     + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
                     + ")");

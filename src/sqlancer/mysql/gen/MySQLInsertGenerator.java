@@ -31,13 +31,17 @@ public class MySQLInsertGenerator {
     }
 
     public static SQLQueryAdapter insertRow(MySQLGlobalState globalState, MySQLTable table) throws SQLException {
-        if (Randomly.getBoolean()) {
-            return new MySQLInsertGenerator(globalState, table).generateInsert();
-        } else {
-            return new MySQLInsertGenerator(globalState, table).generateReplace();
-        }
+        // TODO: REPLACE is not supported by ShardingSphere SQL Federation, always use INSERT
+        // if (Randomly.getBoolean()) {
+        //     return new MySQLInsertGenerator(globalState, table).generateInsert();
+        // } else {
+        //     return new MySQLInsertGenerator(globalState, table).generateReplace();
+        // }
+        return new MySQLInsertGenerator(globalState, table).generateInsert();
     }
 
+    // TODO: REPLACE is not supported by ShardingSphere SQL Federation
+    /*
     private SQLQueryAdapter generateReplace() {
         sb.append("REPLACE");
         if (Randomly.getBoolean()) {
@@ -47,6 +51,7 @@ public class MySQLInsertGenerator {
         return generateInto();
 
     }
+    */
 
     private SQLQueryAdapter generateInsert() {
         sb.append("INSERT");

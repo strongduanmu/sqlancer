@@ -203,7 +203,7 @@ public class MariaDBProvider extends SQLProviderAdapter<MariaDBGlobalState, Mari
                         databaseName);
                 s.execute("REGISTER STORAGE UNIT ds_0 (\n"
                         + "    URL=\"" + storageUnitUrl + "\",\n"
-                        + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                        + "    USER=\"" + globalState.getOptions().getStorageUnitUsername() + "\",\n"
                         + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
                         + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
                         + ")");
@@ -217,7 +217,7 @@ public class MariaDBProvider extends SQLProviderAdapter<MariaDBGlobalState, Mari
                 globalState.getOptions().getStorageUnitHost(),
                 globalState.getOptions().getStorageUnitPort());
         try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
-                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitUsername(),
                 globalState.getOptions().getStorageUnitPassword())) {
             // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
             try (Statement s = pcon.createStatement()) {

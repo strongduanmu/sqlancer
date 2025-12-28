@@ -27,7 +27,6 @@ import sqlancer.mysql.gen.admin.MySQLFlush;
 import sqlancer.mysql.gen.admin.MySQLReset;
 import sqlancer.mysql.gen.datadef.MySQLIndexGenerator;
 import sqlancer.mysql.gen.tblmaintenance.MySQLAnalyzeTable;
-import sqlancer.mysql.gen.tblmaintenance.MySQLCheckTable;
 import sqlancer.mysql.gen.tblmaintenance.MySQLChecksum;
 import sqlancer.mysql.gen.tblmaintenance.MySQLOptimize;
 import sqlancer.mysql.gen.tblmaintenance.MySQLRepair;
@@ -53,14 +52,21 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         REPAIR(MySQLRepair::repair), //
         OPTIMIZE(MySQLOptimize::optimize), //
         CHECKSUM(MySQLChecksum::checksum), //
-        CHECK_TABLE(MySQLCheckTable::check), //
         ANALYZE_TABLE(MySQLAnalyzeTable::analyze), //
         FLUSH(MySQLFlush::create), RESET(MySQLReset::create), CREATE_INDEX(MySQLIndexGenerator::create), //
         ALTER_TABLE(MySQLAlterTable::create), //
         TRUNCATE_TABLE(MySQLTruncateTableGenerator::generate), //
-        SELECT_INFO((g) -> new SQLQueryAdapter(
-                "select TABLE_NAME, ENGINE from information_schema.TABLES where table_schema = '" + g.getDatabaseName()
-                        + "'")), //
+        SELECT_INFO((g) -> {
+            // ShardingSphere does not update information_schema.TABLES immediately after CREATE TABLE
+            // Use SHOW TABLES instead for ShardingSphere environment (port 3307)
+            if (g.getOptions().getPort() == 3307) {
+                return new SQLQueryAdapter("SHOW TABLES");
+            } else {
+                return new SQLQueryAdapter(
+                        "select TABLE_NAME, ENGINE from information_schema.TABLES where table_schema = '" + g.getDatabaseName()
+                                + "'");
+            }
+        }), //
         UPDATE(MySQLUpdateGenerator::create), //
         DELETE(MySQLDeleteGenerator::delete), //
         DROP_INDEX(MySQLDropIndex::generate);
@@ -111,7 +117,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             nrPerformed = globalState.getOptions().getNumberConcurrentThreads() == 1 ? r.getInteger(0, 1) : 0;
             break;
         case CHECKSUM:
-        case CHECK_TABLE:
+        // CHECK_TABLE - commented out, not supported by ShardingSphere SQL Federation
         case ANALYZE_TABLE:
             nrPerformed = r.getInteger(0, 2);
             break;
@@ -140,6 +146,10 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
     public void generateDatabase(MySQLGlobalState globalState) throws Exception {
         while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(1, 2)) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getDatabaseTables().size());
+            if (globalState.getOptions().getPort() == 3307) {
+                // NOTE: 尝试先删除表，避免表已存在报错
+                globalState.executeStatement(new SQLQueryAdapter("DROP TABLE IF EXISTS " + tableName));
+            }
             SQLQueryAdapter createTable = MySQLTableGenerator.generate(globalState, tableName);
             globalState.executeStatement(createTable);
         }
@@ -208,10 +218,12 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                         databaseName);
                 s.execute("REGISTER STORAGE UNIT ds_0 (\n"
                         + "    URL=\"" + storageUnitUrl + "\",\n"
-                        + "    USER=\"" + globalState.getOptions().getStorageUnitUser() + "\",\n"
+                        + "    USER=\"" + globalState.getOptions().getStorageUnitUsername() + "\",\n"
                         + "    PASSWORD=\"" + globalState.getOptions().getStorageUnitPassword() + "\",\n"
                         + "    PROPERTIES(\"maximumPoolSize\"=\"50\",\"idleTimeout\"=\"30000\")\n"
                         + ")");
+                // NOTE: 刷新表元数据以确保逻辑库和物理存储单元的元数据同步
+                s.execute("REFRESH TABLE METADATA");
             }
         }
         return new SQLConnection(con);
@@ -222,7 +234,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                 globalState.getOptions().getStorageUnitHost(),
                 globalState.getOptions().getStorageUnitPort());
         try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
-                globalState.getOptions().getStorageUnitUser(),
+                globalState.getOptions().getStorageUnitUsername(),
                 globalState.getOptions().getStorageUnitPassword())) {
             // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
             try (Statement s = pcon.createStatement()) {

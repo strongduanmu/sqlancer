@@ -157,7 +157,7 @@ public class MainOptions {
     private int storageUnitPort = 3306; // NOPMD
 
     @Parameter(names = "--storage-unit-username", description = "Storage unit username for ShardingSphere")
-    private String storageUnitUser = "root"; // NOPMD
+    private String storageUnitUsername = "root"; // NOPMD
 
     @Parameter(names = "--storage-unit-password", description = "Storage unit password for ShardingSphere")
     private String storageUnitPassword = "123456"; // NOPMD
@@ -363,8 +363,8 @@ public class MainOptions {
         return storageUnitPort;
     }
 
-    public String getStorageUnitUser() {
-        return storageUnitUser;
+    public String getStorageUnitUsername() {
+        return storageUnitUsername;
     }
 
     public String getStorageUnitPassword() {
