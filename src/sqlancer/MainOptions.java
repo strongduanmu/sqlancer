@@ -82,7 +82,7 @@ public class MainOptions {
     private boolean printProgressInformation = true; // NOPMD
 
     @Parameter(names = "--print-progress-summary", description = "Whether to print an execution summary when exiting SQLancer", arity = 1)
-    private boolean printProgressSummary; // NOPMD
+    private boolean printProgressSummary = true; // NOPMD
 
     @Parameter(names = "--timeout-seconds", description = "The timeout in seconds")
     private int timeoutSeconds = -1; // NOPMD
