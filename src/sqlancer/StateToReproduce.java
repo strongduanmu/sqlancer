@@ -1,5 +1,7 @@
 package sqlancer;
 
+import sqlancer.common.query.Query;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -7,11 +9,11 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import sqlancer.common.query.Query;
 
 public class StateToReproduce implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -61,7 +63,9 @@ public class StateToReproduce implements Serializable {
         if (queryString == null) {
             throw new IllegalArgumentException();
         }
-        logStatement(databaseProvider.getLoggableFactory().getQueryForStateToReproduce(queryString));
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"));
+        String logMessage = String.format("[%s] [%s] %s", databaseName, timestamp, queryString);
+        logStatement(databaseProvider.getLoggableFactory().getQueryForStateToReproduce(logMessage));
     }
 
     /**
@@ -74,7 +78,9 @@ public class StateToReproduce implements Serializable {
         if (query == null) {
             throw new IllegalArgumentException();
         }
-        statements.add(query);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"));
+        String logMessage = String.format("[%s] [%s] %s", databaseName, timestamp, query.getLogString());
+        statements.add(databaseProvider.getLoggableFactory().getQueryForStateToReproduce(logMessage));
     }
 
     public List<Query<?>> getStatements() {

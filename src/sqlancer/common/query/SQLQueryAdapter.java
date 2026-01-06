@@ -1,14 +1,16 @@
 package sqlancer.common.query;
 
+import sqlancer.GlobalState;
+import sqlancer.Main;
+import sqlancer.SQLConnection;
+
 import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import sqlancer.GlobalState;
-import sqlancer.Main;
-import sqlancer.SQLConnection;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class SQLQueryAdapter extends Query<SQLConnection> implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -119,10 +121,10 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
      */
     public <G extends GlobalState<?, ?, SQLConnection>> boolean execute(G globalState, boolean reportException,
             String... fills) throws SQLException {
-        return internalExecute(globalState.getConnection(), reportException, fills);
+        return internalExecute(globalState, globalState.getConnection(), reportException, fills);
     }
 
-    protected <G extends GlobalState<?, ?, SQLConnection>> boolean internalExecute(SQLConnection connection,
+    protected <G extends GlobalState<?, ?, SQLConnection>> boolean internalExecute(G globalState, SQLConnection connection,
             boolean reportException, String... fills) throws SQLException {
         Statement s;
         if (fills.length > 0) {
@@ -144,7 +146,7 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
         } catch (Exception e) {
             Main.nrUnsuccessfulActions.addAndGet(1);
             if (reportException) {
-                checkException(e);
+                checkException(globalState, e);
             }
             return false;
         } finally {
@@ -152,7 +154,7 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
         }
     }
 
-    public void checkException(Exception e) throws AssertionError {
+    public <G extends GlobalState<?, ?, SQLConnection>> void checkException(G globalState, Exception e) throws AssertionError {
         Throwable ex = e;
 
         while (ex != null) {
@@ -162,8 +164,10 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
                 ex = ex.getCause();
             }
         }
-
-        throw new AssertionError(query, e);
+        String databaseName = globalState.getDatabaseName();
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"));
+        String message = String.format("[%s] [%s] %s", databaseName, timestamp, query);
+        throw new AssertionError(message, e);
     }
 
     @Override
@@ -174,10 +178,10 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
 
     public <G extends GlobalState<?, ?, SQLConnection>> SQLancerResultSet executeAndGet(G globalState,
             boolean reportException, String... fills) throws SQLException {
-        return internalExecuteAndGet(globalState.getConnection(), reportException, fills);
+        return internalExecuteAndGet(globalState, globalState.getConnection(), reportException, fills);
     }
 
-    protected <G extends GlobalState<?, ?, SQLConnection>> SQLancerResultSet internalExecuteAndGet(
+    protected <G extends GlobalState<?, ?, SQLConnection>> SQLancerResultSet internalExecuteAndGet(final G globalState,
             SQLConnection connection, boolean reportException, String... fills) throws SQLException {
         Statement s;
         if (fills.length > 0) {
@@ -204,7 +208,7 @@ public class SQLQueryAdapter extends Query<SQLConnection> implements Serializabl
             s.close();
             Main.nrUnsuccessfulActions.addAndGet(1);
             if (reportException) {
-                checkException(e);
+                checkException(globalState, e);
             }
             return null;
         }

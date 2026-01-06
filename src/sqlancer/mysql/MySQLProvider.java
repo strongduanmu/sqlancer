@@ -183,9 +183,6 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             port = MySQLOptions.DEFAULT_PORT;
         }
         String databaseName = globalState.getDatabaseName();
-        globalState.getState().logStatement("DROP DATABASE IF EXISTS " + databaseName);
-        globalState.getState().logStatement("CREATE DATABASE " + databaseName);
-        globalState.getState().logStatement("USE " + databaseName);
         String url = String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
                 host, port);
         if (3307 == port) {
@@ -193,12 +190,15 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         }
         Connection con = DriverManager.getConnection(url, username, password);
         try (Statement s = con.createStatement()) {
+            globalState.getState().logStatement("DROP DATABASE IF EXISTS " + databaseName);
             s.execute("DROP DATABASE IF EXISTS " + databaseName);
         }
         try (Statement s = con.createStatement()) {
+            globalState.getState().logStatement("CREATE DATABASE " + databaseName);
             s.execute("CREATE DATABASE " + databaseName);
         }
         try (Statement s = con.createStatement()) {
+            globalState.getState().logStatement("USE " + databaseName);
             s.execute("USE " + databaseName);
             if (3307 == port) {
                 // NOTE: 注册 ShardingSphere 存储单元
@@ -206,6 +206,8 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                         globalState.getOptions().getStorageUnitHost(),
                         globalState.getOptions().getStorageUnitPort(),
                         databaseName);
+                globalState.getState()
+                        .logStatement("Register unit " + storageUnitUrl + " for database " + databaseName);
                 s.execute("REGISTER STORAGE UNIT ds_0 (\n"
                         + "    URL=\"" + storageUnitUrl + "\",\n"
                         + "    USER=\"" + globalState.getOptions().getStorageUnitUsername() + "\",\n"
@@ -226,9 +228,11 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                 globalState.getOptions().getStorageUnitPassword())) {
             // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
             try (Statement s = pcon.createStatement()) {
+                globalState.getState().logStatement("-- DB - DROP DATABASE IF EXISTS " + databaseName);
                 s.execute("DROP DATABASE IF EXISTS " + databaseName);
             }
             try (Statement s = pcon.createStatement()) {
+                globalState.getState().logStatement("-- DB - CREATE DATABASE " + databaseName);
                 s.execute("CREATE DATABASE " + databaseName);
             }
         }
