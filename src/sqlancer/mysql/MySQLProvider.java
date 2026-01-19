@@ -183,10 +183,14 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             port = MySQLOptions.DEFAULT_PORT;
         }
         String databaseName = globalState.getDatabaseName();
+        
         String url = String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
                 host, port);
+
+        // Physical connection for querying information_schema in ShardingSphere environment
+        Connection physicalCon = null;
         if (3307 == port) {
-            initPhysicalDatabase(globalState, databaseName);
+            physicalCon = initPhysicalDatabase(globalState, databaseName);
         }
         Connection con = DriverManager.getConnection(url, username, password);
         try (Statement s = con.createStatement()) {
@@ -216,26 +220,26 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
                         + ")");
             }
         }
-        return new SQLConnection(con);
+        return new SQLConnection(con, physicalCon);
     }
-    
-    private void initPhysicalDatabase(MySQLGlobalState globalState, String databaseName) throws SQLException {
+
+    private Connection initPhysicalDatabase(MySQLGlobalState globalState, String databaseName) throws SQLException {
         String storageUnitUrl = String.format("jdbc:mysql://%s:%d?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
                 globalState.getOptions().getStorageUnitHost(),
                 globalState.getOptions().getStorageUnitPort());
-        try (Connection pcon = DriverManager.getConnection(storageUnitUrl,
+        Connection pcon = DriverManager.getConnection(storageUnitUrl,
                 globalState.getOptions().getStorageUnitUsername(),
-                globalState.getOptions().getStorageUnitPassword())) {
-            // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
-            try (Statement s = pcon.createStatement()) {
-                globalState.getState().logStatement("-- DB - DROP DATABASE IF EXISTS " + databaseName);
-                s.execute("DROP DATABASE IF EXISTS " + databaseName);
-            }
-            try (Statement s = pcon.createStatement()) {
-                globalState.getState().logStatement("-- DB - CREATE DATABASE " + databaseName);
-                s.execute("CREATE DATABASE " + databaseName);
-            }
+                globalState.getOptions().getStorageUnitPassword());
+        // NOTE: 先重建存储单元库，再重建逻辑库，防止残留数据影响测试
+        try (Statement s = pcon.createStatement()) {
+            globalState.getState().logStatement("-- DB - DROP DATABASE IF EXISTS " + databaseName);
+            s.execute("DROP DATABASE IF EXISTS " + databaseName);
         }
+        try (Statement s = pcon.createStatement()) {
+            globalState.getState().logStatement("-- DB - CREATE DATABASE " + databaseName);
+            s.execute("CREATE DATABASE " + databaseName);
+        }
+        return pcon;
     }
     
     @Override

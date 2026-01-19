@@ -231,7 +231,8 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
         for (int i = 0; i < NR_SCHEMA_READ_TRIES; i++) {
             try {
                 List<MySQLTable> databaseTables = new ArrayList<>();
-                try (Statement s = con.createStatement()) {
+                // Use physical connection for querying information_schema to avoid ShardingSphere async metadata issues
+                try (Statement s = con.createPhysicalStatement()) {
                     try (ResultSet rs = s.executeQuery(
                             "select TABLE_NAME, ENGINE from information_schema.TABLES where table_schema = '"
                                     + databaseName + "';")) {
@@ -260,7 +261,8 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
     private static List<MySQLIndex> getIndexes(SQLConnection con, String tableName, String databaseName)
             throws SQLException {
         List<MySQLIndex> indexes = new ArrayList<>();
-        try (Statement s = con.createStatement()) {
+        // Use physical connection for querying INFORMATION_SCHEMA to avoid ShardingSphere async metadata issues
+        try (Statement s = con.createPhysicalStatement()) {
             try (ResultSet rs = s.executeQuery(String.format(
                     "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME='%s';",
                     databaseName, tableName))) {
@@ -276,7 +278,8 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
     private static List<MySQLColumn> getTableColumns(SQLConnection con, String tableName, String databaseName)
             throws SQLException {
         List<MySQLColumn> columns = new ArrayList<>();
-        try (Statement s = con.createStatement()) {
+        // Use physical connection for querying information_schema to avoid ShardingSphere async metadata issues
+        try (Statement s = con.createPhysicalStatement()) {
             try (ResultSet rs = s.executeQuery("select * from information_schema.columns where table_schema = '"
                     + databaseName + "' AND TABLE_NAME='" + tableName + "'")) {
                 while (rs.next()) {

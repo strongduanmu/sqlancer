@@ -8,9 +8,16 @@ import java.sql.Statement;
 public class SQLConnection implements SQLancerDBConnection {
 
     private final Connection connection;
+    
+    private final Connection physicalConnection;
 
     public SQLConnection(Connection connection) {
+        this(connection, null);
+    }
+
+    public SQLConnection(Connection connection, Connection physicalConnection) {
         this.connection = connection;
+        this.physicalConnection = physicalConnection;
     }
 
     @Override
@@ -22,6 +29,9 @@ public class SQLConnection implements SQLancerDBConnection {
     @Override
     public void close() throws SQLException {
         connection.close();
+        if (physicalConnection != null) {
+            physicalConnection.close();
+        }
     }
 
     public Statement prepareStatement(String arg) throws SQLException {
@@ -30,5 +40,20 @@ public class SQLConnection implements SQLancerDBConnection {
 
     public Statement createStatement() throws SQLException {
         return connection.createStatement();
+    }
+
+    public Statement createPhysicalStatement() throws SQLException {
+        if (physicalConnection != null) {
+            return physicalConnection.createStatement();
+        }
+        return connection.createStatement();
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public Connection getPhysicalConnection() {
+        return physicalConnection != null ? physicalConnection : connection;
     }
 }
